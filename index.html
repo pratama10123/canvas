@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="id">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, user-scalable=no"
+        />
+        <title>Fruit Catcher Express - Final Fix</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            body {
+                background: #0a0f1e;
+                overflow: hidden;
+                font-family: "Segoe UI", system-ui, sans-serif;
+                touch-action: none;
+            }
+            .game-container {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background: #0a0f1e;
+            }
+            canvas {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                background: #1a2a32;
+                cursor: none;
+            }
+            .game-ui {
+                position: fixed;
+                top: 15px;
+                right: 15px;
+                z-index: 20;
+                display: flex;
+                gap: 12px;
+            }
+            .game-ui button {
+                background: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(4px);
+                border: none;
+                color: white;
+                font-size: 24px;
+                width: 48px;
+                height: 48px;
+                border-radius: 50%;
+                cursor: pointer;
+            }
+            #startScreen {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: url("assets/background.jpg") center/cover no-repeat;
+                z-index: 30;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            #startScreen::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: rgba(10, 15, 30, 0.7);
+                z-index: -1;
+            }
+            .start-card {
+                background: rgba(0, 0, 0, 0.7);
+                border-radius: 48px;
+                padding: 32px 40px;
+                text-align: center;
+                border: 1px solid rgba(255, 215, 0, 0.4);
+                max-width: 90vw;
+            }
+            .start-card h1 {
+                font-size: clamp(28px, 8vw, 64px);
+                background: linear-gradient(135deg, #ffd966, #ffa500);
+                -webkit-background-clip: text;
+                background-clip: text;
+                color: transparent;
+            }
+            .mode-buttons {
+                display: flex;
+                gap: 20px;
+                justify-content: center;
+                margin: 24px 0;
+            }
+            .mode-btn {
+                background: rgba(255, 255, 255, 0.2);
+                border: 2px solid #ffd966;
+                padding: 12px 24px;
+                border-radius: 40px;
+                font-size: 18px;
+                font-weight: bold;
+                color: white;
+                cursor: pointer;
+                transition: 0.2s;
+            }
+            .mode-btn.selected {
+                background: #ffd966;
+                color: #1a1a2e;
+                border-color: #ffa500;
+            }
+            .start-card button {
+                background: linear-gradient(135deg, #ffd966, #ff8c00);
+                border: none;
+                padding: 14px 40px;
+                font-size: 22px;
+                font-weight: bold;
+                border-radius: 60px;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+            .arrow-buttons {
+                position: fixed;
+                bottom: 20px;
+                left: 0;
+                right: 0;
+                display: flex;
+                justify-content: center;
+                gap: 30px;
+                z-index: 25;
+                pointer-events: none;
+            }
+            .arrow-buttons button {
+                pointer-events: auto;
+                width: 70px;
+                height: 70px;
+                border-radius: 50%;
+                background: rgba(0, 0, 0, 0.6);
+                backdrop-filter: blur(8px);
+                border: 2px solid #ffd966;
+                font-size: 40px;
+                color: white;
+                cursor: pointer;
+                transition: 0.05s linear;
+            }
+            .arrow-buttons button:active {
+                transform: scale(0.92);
+                background: rgba(0, 0, 0, 0.9);
+            }
+            .pause-panel {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.85);
+                backdrop-filter: blur(12px);
+                padding: 32px 48px;
+                border-radius: 48px;
+                text-align: center;
+                z-index: 40;
+                display: none;
+                flex-direction: column;
+                gap: 20px;
+            }
+            .pause-panel button {
+                background: #ff8c00;
+                border: none;
+                padding: 12px 32px;
+                border-radius: 40px;
+                font-size: 20px;
+                font-weight: bold;
+                cursor: pointer;
+            }
+            @media (max-width: 768px) {
+                .arrow-buttons button {
+                    width: 60px;
+                    height: 60px;
+                    font-size: 32px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="game-container">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+        </div>
+        <div class="game-ui">
+            <button id="pauseBtn">⏸️</button>
+        </div>
+        <div id="startScreen">
+            <div class="start-card">
+                <h1>🍎 FRUIT CATCHER</h1>
+                <p style="color: #ccc; margin-bottom: 10px">
+                    🍎 +10 &nbsp;| 💣 -1❤️ &nbsp;| ⭐ 2x poin &nbsp;| ❤️ +1
+                    nyawa
+                </p>
+                <div class="mode-buttons">
+                    <div id="pcModeBtn" class="mode-btn selected">
+                        🖥️ PC (Keyboard)
+                    </div>
+                    <div id="mobileModeBtn" class="mode-btn">
+                        📱 Mobile (Touch)
+                    </div>
+                </div>
+                <button id="startBtn">▶ MULAI</button>
+                <p
+                    style="
+                        color: #aaa;
+                        font-size: 13px;
+                        margin-top: 16px;
+                        line-height: 1.5;
+                    "
+                >
+                    🍎 Tangkap buah &nbsp;| 💣 Hindari bom &nbsp;| ⭐ Kumpulkan
+                    bintang &nbsp;| ❤️ Jaga nyawa
+                </p>
+            </div>
+        </div>
+        <div id="gameOverPanel" class="pause-panel" style="display: none">
+            <h2 style="color: #ff6666">GAME OVER</h2>
+            <p
+                id="gameOverScore"
+                style="color: #ffd966; font-size: 24px; margin: 10px 0"
+            ></p>
+            <button id="restartBtn">🔄 Main Lagi</button>
+        </div>
+        <div id="pausePanel" class="pause-panel">
+            <h2 style="color: white">⏸ PAUSE</h2>
+            <button id="resumeBtn">Lanjutkan</button>
+            <button id="restartFromPauseBtn">Main Lagi</button>
+        </div>
+        <div id="arrowButtons" class="arrow-buttons" style="display: none">
+            <button id="leftArrowBtn">◀</button>
+            <button id="rightArrowBtn">▶</button>
+        </div>
+
+        <script>
+            (function () {
+                const canvas = document.getElementById("gameCanvas");
+                const ctx = canvas.getContext("2d");
+                const GAME_W = 800,
+                    GAME_H = 600;
+                canvas.width = GAME_W;
+                canvas.height = GAME_H;
+
+                // ---------- ASSET GAMBAR ----------
+                const assets = {
+                    player: new Image(),
+                    fruit: new Image(),
+                    bomb: new Image(),
+                    golden: new Image(),
+                    heart: new Image(),
+                    bg: new Image(),
+                };
+                assets.player.src = "assets/player.png";
+                assets.fruit.src = "assets/fruit.png";
+                assets.bomb.src = "assets/bomb.png";
+                assets.golden.src = "assets/golden.png";
+                assets.heart.src = "assets/heart.png";
+                assets.bg.src = "assets/background.jpg";
+
+                let assetsReady = {};
+                for (let k in assets) {
+                    assetsReady[k] = false;
+                    assets[k].onload = () => {
+                        assetsReady[k] = true;
+                    };
+                    assets[k].onerror = () => {
+                        assetsReady[k] = false;
+                    };
+                }
+
+                // Fungsi bantu cari key dari img
+                function getAssetKey(img) {
+                    for (let k in assets) if (assets[k] === img) return k;
+                    return null;
+                }
+
+                // ---------- AUDIO ----------
+                const sound = {
+                    collect: new Howl({
+                        src: ["assets/collect.mp3"],
+                        volume: 0.5,
+                    }),
+                    bomb: new Howl({ src: ["assets/bomb.mp3"], volume: 0.6 }),
+                    powerup: new Howl({
+                        src: ["assets/powerup.mp3"],
+                        volume: 0.7,
+                    }),
+                    levelup: new Howl({
+                        src: ["assets/levelup.wav"],
+                        volume: 0.5,
+                    }),
+                    gameover: new Howl({
+                        src: ["assets/gameover.mp3"],
+                        volume: 0.7,
+                    }),
+                    bgm: new Howl({
+                        src: ["assets/bg-music.mp3"],
+                        volume: 0.3,
+                        loop: true,
+                    }),
+                };
+                let bgmStarted = false;
+                function playSound(snd) {
+                    if (snd && !paused && gameStarted && !gameOver) snd.play();
+                }
+
+                // ---------- STATE GAME ----------
+                let gameStarted = false,
+                    gameOver = false,
+                    paused = false;
+                let score = 0,
+                    lives = 3,
+                    doublePoints = false,
+                    doubleEndTime = 0,
+                    level = 1;
+                let player = {
+                    x: GAME_W / 2,
+                    y: GAME_H - 70,
+                    width: 70,
+                    height: 70,
+                };
+                let fallingObjects = [];
+                let baseSpeed = 2.0,
+                    spawnDelay = 70,
+                    frameCounter = 0;
+                let floatingTexts = [];
+                let highScore = localStorage.getItem("fruitHighScore")
+                    ? parseInt(localStorage.getItem("fruitHighScore"))
+                    : 0;
+
+                // Referensi elemen UI (dideklarasikan di awal, diisi setelah DOM ready)
+                let gameOverPanel = null;
+                let gameOverScoreEl = null;
+
+                // ---------- KONTROL ----------
+                let leftPressed = false,
+                    rightPressed = false;
+                let controlMode = "PC"; // "PC" atau "Mobile"
+
+                // Keyboard aktif hanya di mode PC
+                let keyboardEnabled = true;
+
+                function movePlayer(deltaX) {
+                    player.x += deltaX;
+                    if (player.x < 35) player.x = 35;
+                    if (player.x > GAME_W - 35) player.x = GAME_W - 35;
+                }
+
+                // ---------- GAME LOGIKA ----------
+                function addFloatingText(x, y, text, color = "#FFF") {
+                    floatingTexts.push({
+                        x,
+                        y,
+                        text,
+                        color,
+                        life: 1.0,
+                        vy: -1.2,
+                    });
+                }
+
+                function spawnObject() {
+                    const rand = Math.random() * 100;
+                    let type;
+                    if (rand < 60) type = "fruit";
+                    else if (rand < 75) type = "bomb";
+                    else if (rand < 85) type = "golden";
+                    else type = "heart";
+                    const radius = 18 + Math.random() * 8;
+                    const x = 30 + Math.random() * (GAME_W - 60);
+                    fallingObjects.push({
+                        x,
+                        y: -30,
+                        radius,
+                        type,
+                        speed: baseSpeed + Math.random() * 0.8,
+                        rotation: 0,
+                    });
+                }
+
+                function updateLevel() {
+                    let newLevel = 1 + Math.floor(score / 100);
+                    if (newLevel > 15) newLevel = 15;
+                    if (newLevel !== level) {
+                        level = newLevel;
+                        playSound(sound.levelup);
+                        addFloatingText(
+                            player.x,
+                            player.y - 40,
+                            `LEVEL ${level} UP!`,
+                            "#FFD966",
+                        );
+                        baseSpeed = 2.0 + (level - 1) * 0.25;
+                        if (baseSpeed > 6.5) baseSpeed = 6.5;
+                        let newSpawn = 70 - (level - 1) * 3;
+                        if (newSpawn < 35) newSpawn = 35;
+                        spawnDelay = newSpawn;
+                    }
+                }
+
+                function handleCatch(obj, idx) {
+                    const cx = obj.x,
+                        cy = obj.y;
+                    if (obj.type === "fruit") {
+                        let gain = doublePoints ? 20 : 10;
+                        score += gain;
+                        addFloatingText(
+                            cx,
+                            cy,
+                            doublePoints ? `+20 ⚡` : `+10`,
+                            "#7CFC00",
+                        );
+                        playSound(sound.collect);
+                    } else if (obj.type === "bomb") {
+                        lives--;
+                        addFloatingText(cx, cy, "💣 -1", "#FF5555");
+                        playSound(sound.bomb);
+                        if (lives <= 0 && !gameOver) {
+                            gameOver = true;
+                            gameOverScoreEl.textContent =
+                                "🍎 " + score.toLocaleString("id-ID");
+                            gameOverPanel.style.display = "flex";
+
+                            // Hentikan BGM
+                            if (sound.bgm.playing()) sound.bgm.stop();
+
+                            // Mainkan suara game over
+                            sound.gameover.play();
+                        }
+                    } else if (obj.type === "golden") {
+                        doublePoints = true;
+                        doubleEndTime = performance.now() + 5000;
+                        addFloatingText(cx, cy, "🌟 2x POINTS!", "#FFD700");
+                        playSound(sound.powerup);
+                    } else if (obj.type === "heart") {
+                        if (lives < 5) {
+                            lives++;
+                            addFloatingText(cx, cy, "❤️ +1 NYAWA", "#FF6B6B");
+                        } else {
+                            score += 5;
+                            addFloatingText(
+                                cx,
+                                cy,
+                                "+5 (nyawa penuh)",
+                                "#FFA500",
+                            );
+                        }
+                        playSound(sound.collect);
+                    }
+                    fallingObjects.splice(idx, 1);
+                    updateLevel();
+                    if (lives > 5) lives = 5;
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem("fruitHighScore", highScore);
+                    }
+                }
+
+                function updateGame() {
+                    if (!gameStarted || gameOver || paused) return;
+
+                    // Gerakan player (kecepatan 6 per frame)
+                    if (leftPressed) movePlayer(-6);
+                    if (rightPressed) movePlayer(6);
+
+                    // Double points timer
+                    if (doublePoints && performance.now() > doubleEndTime) {
+                        doublePoints = false;
+                        addFloatingText(
+                            player.x,
+                            player.y - 30,
+                            "2x HABIS",
+                            "#FFA500",
+                        );
+                    }
+
+                    // Spawn objek
+                    frameCounter++;
+                    if (frameCounter >= spawnDelay) {
+                        frameCounter = 0;
+                        spawnObject();
+                        if (level >= 5 && Math.random() < 0.2) spawnObject();
+                    }
+
+                    // Update objek & collision detection
+                    for (let i = fallingObjects.length - 1; i >= 0; i--) {
+                        const obj = fallingObjects[i];
+                        obj.y += obj.speed;
+                        obj.rotation += 0.03;
+
+                        // Hitung tabrakan
+                        const playerLeft = player.x - player.width / 2;
+                        const playerRight = player.x + player.width / 2;
+                        const playerTop = player.y - player.height / 2;
+                        const playerBottom = player.y + player.height / 2;
+                        const closestX = Math.max(
+                            playerLeft,
+                            Math.min(obj.x, playerRight),
+                        );
+                        const closestY = Math.max(
+                            playerTop,
+                            Math.min(obj.y, playerBottom),
+                        );
+                        const dx = obj.x - closestX;
+                        const dy = obj.y - closestY;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < obj.radius) {
+                            handleCatch(obj, i);
+                            continue;
+                        }
+
+                        // Jika objek jatuh ke bawah layar
+                        if (obj.y > GAME_H + 60) {
+                            // ✅ HANYA FRUIT yang terlewat mengurangi nyawa (sesuai desain standar)
+                            // Bom yang terlewat TIDAK mengurangi nyawa
+                            if (obj.type === "fruit") {
+                                lives--;
+                                addFloatingText(
+                                    obj.x,
+                                    GAME_H - 20,
+                                    "💔 -1",
+                                    "#FF8888",
+                                );
+                                playSound(sound.bomb);
+                                if (lives <= 0 && !gameOver) {
+                                    gameOver = true;
+                                    gameOverScoreEl.textContent =
+                                        "🍎 " + score.toLocaleString("id-ID");
+                                    gameOverPanel.style.display = "flex";
+
+                                    // Hentikan BGM
+                                    if (sound.bgm.playing()) sound.bgm.stop();
+
+                                    // Mainkan suara game over
+                                    sound.gameover.play();
+                                }
+                            }
+                            // Bomb, golden, heart yang terlewat hanya hilang tanpa penalti
+                            fallingObjects.splice(i, 1);
+                            updateLevel();
+                        }
+                    }
+                    if (lives <= 0 && !gameOver) {
+                        gameOver = true;
+                        gameOverScoreEl.textContent =
+                            "🍎 " + score.toLocaleString("id-ID");
+                        gameOverPanel.style.display = "flex";
+
+                        // Hentikan BGM
+                        if (sound.bgm.playing()) sound.bgm.stop();
+
+                        // Mainkan suara game over (panggil langsung, hindari guard !gameOver di playSound)
+                        sound.gameover.play();
+                    }
+                }
+
+                // ---------- RENDER ----------
+                function drawImageSafe(img, x, y, w, h, emoji, colorBg) {
+                    const assetKey = getAssetKey(img);
+                    const isReady = assetKey && assetsReady[assetKey] === true;
+
+                    if (img.complete && img.naturalWidth > 0 && isReady) {
+                        ctx.drawImage(img, x, y, w, h);
+                    } else {
+                        // fallback
+                        ctx.fillStyle = colorBg || "#AAA";
+                        ctx.beginPath();
+                        ctx.arc(x + w / 2, y + h / 2, w / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = "#000";
+                        ctx.font = `${Math.floor(w * 0.6)}px "Segoe UI"`;
+                        ctx.textAlign = "center";
+                        ctx.textBaseline = "middle";
+                        ctx.fillText(emoji, x + w / 2, y + h / 2);
+                    }
+                }
+
+                function render() {
+                    if (!gameStarted) return;
+
+                    // Background
+                    if (assets.bg.complete && assetsReady.bg)
+                        ctx.drawImage(assets.bg, 0, 0, GAME_W, GAME_H);
+                    else {
+                        ctx.fillStyle = "#1f3a3f";
+                        ctx.fillRect(0, 0, GAME_W, GAME_H);
+                    }
+
+                    // Objek jatuh
+                    for (let obj of fallingObjects) {
+                        const size = obj.radius * 2;
+                        let emoji = "🍎",
+                            color = "#E34234";
+                        let img = assets.fruit;
+                        if (obj.type === "fruit") {
+                            emoji = "🍎";
+                            color = "#FF6B6B";
+                            img = assets.fruit;
+                        } else if (obj.type === "bomb") {
+                            emoji = "💣";
+                            color = "#333";
+                            img = assets.bomb;
+                        } else if (obj.type === "golden") {
+                            emoji = "⭐";
+                            color = "#FFD700";
+                            img = assets.golden;
+                        } else if (obj.type === "heart") {
+                            emoji = "❤️";
+                            color = "#FF4444";
+                            img = assets.heart;
+                        }
+                        ctx.save();
+                        ctx.translate(obj.x, obj.y);
+                        ctx.rotate(obj.rotation);
+                        drawImageSafe(
+                            img,
+                            -size / 2,
+                            -size / 2,
+                            size,
+                            size,
+                            emoji,
+                            color,
+                        );
+                        ctx.restore();
+                    }
+
+                    // Player
+                    const pW = player.width,
+                        pH = player.height;
+                    drawImageSafe(
+                        assets.player,
+                        player.x - pW / 2,
+                        player.y - pH / 2,
+                        pW,
+                        pH,
+                        "🐱",
+                        "#4CAF50",
+                    );
+
+                    // UI
+                    ctx.font = "bold 24px 'Segoe UI'";
+                    ctx.fillStyle = "white";
+                    ctx.shadowBlur = 0;
+                    ctx.fillText("🍎 " + score.toLocaleString("id-ID"), 20, 45);
+                    ctx.fillText("❤️ " + lives, 20, 85);
+                    if (doublePoints) {
+                        let remain = Math.max(
+                            0,
+                            (doubleEndTime - performance.now()) / 1000,
+                        ).toFixed(1);
+                        ctx.fillStyle = "#FFD966";
+                        ctx.fillText(`⭐ 2x: ${remain}s`, 20, 125);
+                    }
+                    ctx.fillStyle = "#DDD";
+                    ctx.font = "18px monospace";
+                    ctx.fillText(`Level ${level}`, GAME_W - 90, 45);
+                    ctx.fillText(`🏆 ${highScore}`, GAME_W - 90, 85);
+
+                    // Floating text
+                    for (let i = 0; i < floatingTexts.length; i++) {
+                        let ft = floatingTexts[i];
+                        ft.y += ft.vy;
+                        ft.life -= 0.02;
+                        ctx.globalAlpha = ft.life;
+                        ctx.font = "bold 20px 'Segoe UI'";
+                        ctx.fillStyle = ft.color;
+                        ctx.fillText(ft.text, ft.x, ft.y);
+                        if (ft.life <= 0) floatingTexts.splice(i, 1);
+                    }
+                    ctx.globalAlpha = 1;
+
+                    // Game over overlay
+                    if (gameOver) {
+                        ctx.fillStyle = "rgba(0,0,0,0.7)";
+                        ctx.fillRect(0, 0, GAME_W, GAME_H);
+                        ctx.font = "bold 42px system-ui";
+                        ctx.fillStyle = "#FF6666";
+                        ctx.textAlign = "center";
+                        ctx.fillText("GAME OVER", GAME_W / 2, GAME_H / 2 - 40);
+                        ctx.font = "28px system-ui";
+                        ctx.fillStyle = "#FFD966";
+                        ctx.fillText(
+                            `Skor: ${score}`,
+                            GAME_W / 2,
+                            GAME_H / 2 + 20,
+                        );
+                        ctx.font = "20px system-ui";
+                        ctx.fillStyle = "#CCC";
+                        ctx.fillText(
+                            "Press SPACE to restart",
+                            GAME_W / 2,
+                            GAME_H / 2 + 80,
+                        );
+                        ctx.textAlign = "left";
+                    }
+                    if (paused && !gameOver && gameStarted) {
+                        ctx.globalAlpha = 0.6;
+                        ctx.fillStyle = "#000";
+                        ctx.fillRect(0, 0, GAME_W, GAME_H);
+                        ctx.globalAlpha = 1;
+                        ctx.font = "bold 36px system-ui";
+                        ctx.fillStyle = "white";
+                        ctx.textAlign = "center";
+                        ctx.fillText("⏸ PAUSE", GAME_W / 2, GAME_H / 2);
+                        ctx.textAlign = "left";
+                    }
+                }
+
+                // ---------- MANAJEMEN GAME ----------
+                function restartGame() {
+                    gameOver = false;
+                    paused = false;
+                    gameOverPanel.style.display = "none";
+                    score = 0;
+                    lives = 3;
+                    doublePoints = false;
+                    level = 1;
+                    baseSpeed = 2.0;
+                    spawnDelay = 70;
+                    frameCounter = 0;
+                    fallingObjects = [];
+                    floatingTexts = [];
+                    player.x = GAME_W / 2;
+                    leftPressed = false;
+                    rightPressed = false;
+                    updateLevel();
+                    if (sound.bgm.playing()) sound.bgm.stop();
+                    if (bgmStarted && gameStarted) sound.bgm.play();
+                    document.getElementById("pausePanel").style.display =
+                        "none";
+                }
+
+                function startGame() {
+                    document.getElementById("startScreen").style.display =
+                        "none";
+                    gameStarted = true;
+                    gameOver = false;
+                    restartGame();
+                    if (!bgmStarted) {
+                        sound.bgm.play();
+                        bgmStarted = true;
+                    }
+                    // Tampilkan/sembunyikan tombol panah berdasarkan mode
+                    const arrowDiv = document.getElementById("arrowButtons");
+                    arrowDiv.style.display =
+                        controlMode === "Mobile" ? "flex" : "none";
+                }
+
+                // ---------- PILIH MODE ----------
+                const pcBtn = document.getElementById("pcModeBtn");
+                const mobileBtn = document.getElementById("mobileModeBtn");
+
+                pcBtn.addEventListener("click", () => {
+                    controlMode = "PC";
+                    keyboardEnabled = true;
+                    pcBtn.classList.add("selected");
+                    mobileBtn.classList.remove("selected");
+                    // Sembunyikan tombol panah
+                    document.getElementById("arrowButtons").style.display =
+                        "none";
+                    // Reset tombol panah yang mungkin masih tertekan
+                    leftPressed = false;
+                    rightPressed = false;
+                });
+
+                mobileBtn.addEventListener("click", () => {
+                    controlMode = "Mobile";
+                    keyboardEnabled = false;
+                    mobileBtn.classList.add("selected");
+                    pcBtn.classList.remove("selected");
+                    // Tampilkan tombol panah jika game sudah mulai
+                    if (gameStarted) {
+                        document.getElementById("arrowButtons").style.display =
+                            "flex";
+                    }
+                    // Reset keyboard state
+                    leftPressed = false;
+                    rightPressed = false;
+                });
+
+                // ---------- KONTROL KEYBOARD (hanya aktif di mode PC) ----------
+                window.addEventListener("keydown", (e) => {
+                    // SPACE untuk restart saat game over
+                    if (e.key === " " || e.key === "Spacebar") {
+                        if (gameOver) {
+                            restartGame();
+                            e.preventDefault();
+                            return;
+                        }
+                    }
+
+                    if (!gameStarted || gameOver || paused) return;
+                    if (!keyboardEnabled) return; // Mode Mobile: keyboard tidak berpengaruh
+
+                    if (
+                        e.key === "ArrowLeft" ||
+                        e.key === "Left" ||
+                        e.key === "a" ||
+                        e.key === "A"
+                    ) {
+                        leftPressed = true;
+                        e.preventDefault();
+                    }
+                    if (
+                        e.key === "ArrowRight" ||
+                        e.key === "Right" ||
+                        e.key === "d" ||
+                        e.key === "D"
+                    ) {
+                        rightPressed = true;
+                        e.preventDefault();
+                    }
+                });
+
+                window.addEventListener("keyup", (e) => {
+                    if (
+                        e.key === "ArrowLeft" ||
+                        e.key === "Left" ||
+                        e.key === "a" ||
+                        e.key === "A"
+                    )
+                        leftPressed = false;
+                    if (
+                        e.key === "ArrowRight" ||
+                        e.key === "Right" ||
+                        e.key === "d" ||
+                        e.key === "D"
+                    )
+                        rightPressed = false;
+                });
+
+                // ---------- KONTROL MOBILE (Tombol panah) ----------
+                const leftArrow = document.getElementById("leftArrowBtn");
+                const rightArrow = document.getElementById("rightArrowBtn");
+
+                function mobileTouchStart(dir) {
+                    if (!gameStarted || gameOver || paused) return;
+                    if (dir === "left") leftPressed = true;
+                    else rightPressed = true;
+                }
+
+                function mobileTouchEnd(dir) {
+                    if (dir === "left") leftPressed = false;
+                    else rightPressed = false;
+                }
+
+                // Mouse events untuk testing di desktop
+                leftArrow.addEventListener("mousedown", () =>
+                    mobileTouchStart("left"),
+                );
+                leftArrow.addEventListener("mouseup", () =>
+                    mobileTouchEnd("left"),
+                );
+                leftArrow.addEventListener("mouseleave", () =>
+                    mobileTouchEnd("left"),
+                );
+
+                rightArrow.addEventListener("mousedown", () =>
+                    mobileTouchStart("right"),
+                );
+                rightArrow.addEventListener("mouseup", () =>
+                    mobileTouchEnd("right"),
+                );
+                rightArrow.addEventListener("mouseleave", () =>
+                    mobileTouchEnd("right"),
+                );
+
+                // Touch events untuk mobile
+                leftArrow.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    mobileTouchStart("left");
+                });
+                leftArrow.addEventListener("touchend", (e) => {
+                    e.preventDefault();
+                    mobileTouchEnd("left");
+                });
+
+                rightArrow.addEventListener("touchstart", (e) => {
+                    e.preventDefault();
+                    mobileTouchStart("right");
+                });
+                rightArrow.addEventListener("touchend", (e) => {
+                    e.preventDefault();
+                    mobileTouchEnd("right");
+                });
+
+                // ---------- UI LAINNYA ----------
+                const pauseBtn = document.getElementById("pauseBtn");
+                const pausePanel = document.getElementById("pausePanel");
+
+                pauseBtn.onclick = () => {
+                    if (gameStarted && !gameOver) {
+                        paused = !paused;
+                        pausePanel.style.display = paused ? "flex" : "none";
+                        if (paused && sound.bgm.playing()) sound.bgm.pause();
+                        else if (
+                            !paused &&
+                            gameStarted &&
+                            !gameOver &&
+                            bgmStarted
+                        )
+                            sound.bgm.play();
+                    }
+                };
+
+                document.getElementById("resumeBtn").onclick = () => {
+                    paused = false;
+                    pausePanel.style.display = "none";
+                    if (!paused && gameStarted && !gameOver && bgmStarted)
+                        sound.bgm.play();
+                };
+
+                document.getElementById("restartFromPauseBtn").onclick = () => {
+                    paused = false;
+                    pausePanel.style.display = "none";
+                    restartGame();
+                };
+
+                // Tombol Main Lagi saat Game Over
+                gameOverPanel = document.getElementById("gameOverPanel");
+                gameOverScoreEl = document.getElementById("gameOverScore");
+
+                document.getElementById("restartBtn").onclick = () => {
+                    gameOverPanel.style.display = "none";
+                    restartGame();
+                };
+
+                document
+                    .getElementById("startBtn")
+                    .addEventListener("click", startGame);
+
+                // Game loop
+                function gameLoop() {
+                    updateGame();
+                    render();
+                    requestAnimationFrame(gameLoop);
+                }
+                gameLoop();
+
+                console.log("Game siap! Mode: PC (Keyboard)");
+            })();
+        </script>
+    </body>
+</html>
